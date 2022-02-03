@@ -16,3 +16,4 @@ name="zero2prod"
 actix-web = "4.0.0-beta.19"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 reqwest = "0.11.9"
+serde = { version = "1", features = ["derive"] }
