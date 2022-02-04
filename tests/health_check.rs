@@ -1,5 +1,8 @@
 use std::net::TcpListener;
 
+use sqlx::{Connection, PgConnection};
+use zero2prod::configuration::get_config;
+
 // !tests/health_check.rs
 
 async fn spawn_app() -> String {
@@ -31,6 +34,12 @@ async fn health_check_works() {
 async fn subscribe_returns_200_for_valid_form_data() {
     let address = spawn_app().await;
 
+    let config = get_config().expect("Failed to load configuration");
+    let connection_string = config.db.connection_string();
+    let mut connection = PgConnection::connect(connection_string.as_str())
+        .await
+        .expect("Failed to connect to database.");
+
     let client = reqwest::Client::new();
     let body = "name=pro%20dev&email=pro%40dev.com";
 
@@ -42,7 +51,15 @@ async fn subscribe_returns_200_for_valid_form_data() {
         .await
         .expect("Failed to execute request");
 
-    assert_eq!(200, response.status().as_u16())
+    assert_eq!(200, response.status().as_u16());
+
+    let saved = sqlx::query!("SELECT name, email FROM subscriptions")
+        .fetch_one(&mut connection)
+        .await
+        .expect("Failed to fetch saved subscription.");
+
+    assert_eq!("pro dev", saved.name);
+    assert_eq!("pro@dev.com", saved.email);
 }
 
 #[actix_web::test]
